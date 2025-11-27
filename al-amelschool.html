@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Al-Amel School Portal</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 350px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 { margin-top: 0; }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid #bbb;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover { background: #005fcc; }
+    .hidden { display: none; }
+    .student-box, .teacher-box {
+      background: #fff;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card" id="loginCard">
+  <h1>Al-Amel School Login</h1>
+
+  <label>Role:</label>
+  <select id="role">
+    <option value="parents">Parent</option>
+    <option value="teachers">Teacher</option>
+  </select>
+
+  <label>Email:</label>
+  <input type="email" id="email" placeholder="Email" />
+
+  <label>Password:</label>
+  <input type="password" id="password" placeholder="Password" />
+
+  <button onclick="login()">Login</button>
+</div>
+
+<div class="card hidden" id="parentDashboard">
+  <h1>Parent Dashboard</h1>
+  <p id="studentName"></p>
+  <h3>Grades:</h3>
+  <div id="gradeList"></div>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div class="card hidden" id="teacherDashboard">
+  <h1>Teacher Dashboard</h1>
+  <p id="teacherClass"></p>
+  <h3>Students:</h3>
+  <div id="studentList"></div>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<script>
+  const fakeDB = {
+    parents: {
+      "hadž boudellaa": {
+        password: "1234",
+        student: {
+          name: "fatma boudellaa",
+          grades: [
+            { subject: "matematika", grade: "97" },
+            { subject: "Arapski", grade: "85" },
+            { subject: "Engleski", grade: "100" },
+          ],
+        },
+      },
+    },
+    teachers: {
+      "lilas": {
+        password: "abcd",
+        razred: "1 ",
+        students: [
+          { name: "fatma boudellaa", grades: { matematika: "97", Arapski: "85", Engleski: "100" } },
+          { name: "Sara Yusuf", grades: { matematika: "B", Arapski: "A", Engleski: "A" } },
+        ],
+      },
+    },
+  };
+
+  function login() {
+    const role = document.getElementById("role").value;
+    const email = document.getElementById("email").value.trim().toLowerCase();
+    const password = document.getElementById("password").value.trim();
+
+    const group = fakeDB[role];
+
+    if (!group[email]) {
+      alert("No account found for this email.");
+      return;
+    }
+
+    if (group[email].password !== password) {
+      alert("Incorrect password.");
+      return;
+    }
+
+    document.getElementById("loginCard").classList.add("hidden");
+
+    if (role === "parents") {
+      const student = group[email].student;
+      document.getElementById("studentName").innerText = "Student: " + student.name;
+      const gradeList = document.getElementById("gradeList");
+      gradeList.innerHTML = "";
+
+      student.grades.forEach(g => {
+        gradeList.innerHTML += `<div class='student-box'><b>${g.subject}</b>: ${g.grade}</div>`;
+      });
+
+      document.getElementById("parentDashboard").classList.remove("hidden");
+    }
+
+    if (role === "teachers") {
+      const t = group[email];
+      document.getElementById("teacherClass").innerText = "Class: " + t.class;
+      const list = document.getElementById("studentList");
+      list.innerHTML = "";
+
+      t.students.forEach((s, index) => {
+        let grades = "";
+        for (let subj in s.grades) {
+          grades += `${subj}: <input data-student='${index}' data-subject='${subj}' value='${s.grades[subj]}' style='width:50px;' /><br>`;
+        }
+        list.innerHTML += `<div class='teacher-box'><b>${s.name}</b><br>${grades}</div>`;
+      });
+
+      // Add Save button for teacher
+      list.innerHTML += `<button onclick=\"saveGrades('${email}')\">Save Changes</button>`;(s => {
+        let grades = "";
+        for (let subj in s.grades) {
+          grades += `${subj}: ${s.grades[subj]}<br>`;
+        }
+        list.innerHTML += `<div class='teacher-box'><b>${s.name}</b><br>${grades}</div>`;
+      });
+
+      document.getElementById("teacherDashboard").classList.remove("hidden");
+    }
+  }
+
+  function saveGrades(email) {
+    const teacher = fakeDB.teachers[email];
+    const inputs = document.querySelectorAll('#teacherDashboard input');
+
+    inputs.forEach(input => {
+      const index = input.getAttribute('data-student');
+      const subject = input.getAttribute('data-subject');
+      const value = input.value;
+
+      teacher.students[index].grades[subject] = value;
+    });
+
+    alert('Grades saved!');
+  }
+
+  function logout() {
+    document.getElementById("loginCard").classList.remove("hidden");
+    document.getElementById("parentDashboard").classList.add("hidden");
+    document.getElementById("teacherDashboard").classList.add("hidden");
+  }
+</script>
+
+</body>
+</html>
