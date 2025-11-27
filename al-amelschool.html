@@ -1,194 +1,473 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Al-Amel School Portal</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      width: 350px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    h1 { margin-top: 0; }
-    input, select, button {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 8px;
-      border: 1px solid #bbb;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover { background: #005fcc; }
-    .hidden { display: none; }
-    .student-box, .teacher-box {
-      background: #fff;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 10px;
-      border: 1px solid #ddd;
-    }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Al-Amel — Attendance & Grades (Offline)</title>
+<style>
+  :root{
+    --blue:#2f9cff; --dark:#243447; --muted:#6b7280;
+    --present:#28a745; --absent:#e03131; --late:#f59e0b; --unmarked:#e6eef8;
+  }
+  html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Arial, sans-serif;background:linear-gradient(135deg,#e6f0ff 0%, #f8fbff 100%);color:var(--dark)}
+  .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:white;border-radius:14px;box-shadow:0 10px 30px rgba(20,30,60,.08);width:100%;max-width:980px;padding:20px;box-sizing:border-box}
+  .row{display:flex;gap:16px;align-items:center}
+  .col{flex:1}
+  h1{margin:0 0 10px 0;color:var(--blue)}
+  .panel{background:#fbfdff;padding:14px;border-radius:10px;border:1px solid #eef6ff}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input,select,button{font-size:15px;border-radius:10px;padding:10px;border:1px solid #dbeafc;box-sizing:border-box}
+  input[type=number]{width:120px}
+  button{cursor:pointer;background:var(--blue);color:white;border:none}
+  .btn-ghost{background:transparent;color:var(--blue);border:1px solid #dbeafc}
+  .small{font-size:13px;color:var(--muted)}
+  .hidden{display:none}
+  /* login layout */
+  .login-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .password-wrapper{position:relative}
+  .toggle-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px}
+  /* calendar */
+  .calendar-wrap{display:flex;gap:18px;flex-wrap:wrap}
+  .calendar{flex:1;min-width:320px}
+  .cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .day{background:var(--unmarked);padding:10px;border-radius:8px;text-align:center;cursor:pointer;min-height:68px;display:flex;flex-direction:column;justify-content:space-between}
+  .day.inactive{opacity:0.35;cursor:default}
+  .day .date{font-weight:600}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .legend .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #eef6ff}
+  .pill .dot{width:12px;height:12px;border-radius:50%}
+  /* teacher inputs */
+  .teacher-inputs{display:flex;gap:10px;flex-wrap:wrap}
+  .teacher-inputs .item{flex:1;min-width:120px}
+  /* responsive */
+  @media (max-width:820px){
+    .login-grid{grid-template-columns:1fr}
+    .calendar-wrap{flex-direction:column}
+  }
+</style>
 </head>
 <body>
+<div class="wrap">
+  <div class="card">
+    <h1>Al-Amel School — Attendance & Grades</h1>
 
-<div class="card" id="loginCard">
-  <h1>Al-Amel School Login</h1>
+    <!-- TOP: Login area -->
+    <div class="panel" id="loginPanel">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="col">
+          <label class="small">Role</label>
+          <select id="role">
+            <option value="parent">Parent (hadz boudellaa)</option>
+            <option value="teacher">Teacher (lilas)</option>
+            <option value="student">Student (fatma)</option>
+          </select>
+        </div>
+        <div style="width:20px"></div>
+        <div class="col" style="max-width:220px">
+          <label class="small">Username</label>
+          <input id="username" type="text" placeholder='e.g. hadz boudellaa'>
+        </div>
+        <div class="col" style="max-width:220px">
+          <label class="small">Password</label>
+          <div class="password-wrapper">
+            <input id="password" type="password" placeholder="password">
+            <span class="toggle-eye" id="eye" onclick="togglePass()">👁</span>
+          </div>
+        </div>
+        <div style="min-width:120px">
+          <label class="small">&nbsp;</label>
+          <div class="row">
+            <button id="loginBtn" onclick="doLogin()">Login</button>
+            <button class="btn-ghost" onclick="seedDefaults()">Seed</button>
+          </div>
+        </div>
+      </div>
+      <div class="small">Demo accounts: teacher <b>lilas</b> / <b>teacher123</b> · parent <b>hadz boudellaa</b> / <b>parent123</b> · student <b>fatma</b> / <b>student123</b></div>
+    </div>
 
-  <label>Role:</label>
-  <select id="role">
-    <option value="parents">Parent</option>
-    <option value="teachers">Teacher</option>
-  </select>
+    <div style="height:16px"></div>
 
-  <label>Email:</label>
-  <input type="email" id="email" placeholder="Email" />
+    <!-- MAIN CONTENT -->
+    <div id="appArea" class="hidden">
 
-  <label>Password:</label>
-  <input type="password" id="password" placeholder="Password" />
+      <div class="row" style="align-items:flex-start">
+        <!-- Left: Calendar (attendance) -->
+        <div class="calendar panel calendar-wrap col" style="flex:2">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong id="calTitle">Attendance — <span id="studentDisplay">fatma boudellaa</span></strong>
+              <div class="small">Click a day to cycle: <b>Present → Absent → Late → Unmarked</b></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn-ghost" onclick="prevMonth()">‹</button>
+              <div id="monthLabel" class="small"></div>
+              <button class="btn-ghost" onclick="nextMonth()">›</button>
+            </div>
+          </div>
 
-  <button onclick="login()">Login</button>
-</div>
+          <div style="margin-top:12px">
+            <div class="cal-grid" style="grid-template-columns:repeat(7,1fr);margin-bottom:6px">
+              <div class="small" style="text-align:center;font-weight:700">Sun</div>
+              <div class="small" style="text-align:center;font-weight:700">Mon</div>
+              <div class="small" style="text-align:center;font-weight:700">Tue</div>
+              <div class="small" style="text-align:center;font-weight:700">Wed</div>
+              <div class="small" style="text-align:center;font-weight:700">Thu</div>
+              <div class="small" style="text-align:center;font-weight:700">Fri</div>
+              <div class="small" style="text-align:center;font-weight:700">Sat</div>
+            </div>
 
-<div class="card hidden" id="parentDashboard">
-  <h1>Parent Dashboard</h1>
-  <p id="studentName"></p>
-  <h3>Grades:</h3>
-  <div id="gradeList"></div>
-  <button onclick="logout()">Logout</button>
-</div>
+            <div id="daysGrid" class="cal-grid"></div>
 
-<div class="card hidden" id="teacherDashboard">
-  <h1>Teacher Dashboard</h1>
-  <p id="teacherClass"></p>
-  <h3>Students:</h3>
-  <div id="studentList"></div>
-  <button onclick="logout()">Logout</button>
+            <div class="legend">
+              <div class="pill"><span class="dot" style="background:var(--present)"></span><span class="small">Present</span></div>
+              <div class="pill"><span class="dot" style="background:var(--absent)"></span><span class="small">Absent</span></div>
+              <div class="pill"><span class="dot" style="background:var(--late)"></span><span class="small">Late</span></div>
+              <div class="pill"><span class="dot" style="background:var(--unmarked)"></span><span class="small">Unmarked</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Grades + Controls -->
+        <div class="col" style="min-width:300px">
+          <div class="panel" id="gradesPanel">
+            <strong>Grades — <span id="studentNameTitle">fatma boudellaa</span></strong>
+            <div style="margin-top:10px" id="gradesArea"></div>
+            <div style="height:8px"></div>
+            <div id="gradeButtons"></div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="panel" id="attendanceStats">
+            <strong>Attendance Summary</strong>
+            <div id="attendanceSummary" style="margin-top:10px" class="small"></div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="panel hidden" id="teacherControls">
+            <strong>Teacher Controls</strong>
+            <div style="margin-top:8px" class="small">When teacher changes attendance by clicking days, changes save automatically.</div>
+            <div style="height:8px"></div>
+            <button class="btn-ghost" onclick="exportAttendance()">Export Attendance (JSON)</button>
+            <div style="height:8px"></div>
+            <button onclick="clearAttendance()" class="btn-ghost">Clear Attendance</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
 </div>
 
 <script>
-  const fakeDB = {
-    parents: {
-      "hadž boudellaa": {
-        password: "1234",
-        student: {
-          name: "fatma boudellaa",
-          grades: [
-            { subject: "matematika", grade: "97" },
-            { subject: "Arapski", grade: "85" },
-            { subject: "Engleski", grade: "100" },
-          ],
-        },
-      },
-    },
-    teachers: {
-      "lilas": {
-        password: "abcd",
-        razred: "1 ",
-        students: [
-          { name: "fatma boudellaa", grades: { matematika: "97", Arapski: "85", Engleski: "100" } },
-          { name: "Sara Yusuf", grades: { matematika: "B", Arapski: "A", Engleski: "A" } },
-        ],
-      },
-    },
-  };
+/* -----------------------------
+   Demo accounts and student
+------------------------------*/
+const ACCOUNTS = {
+  parents: {"hadz boudellaa":"parent123"},
+  teachers: {"lilas":"teacher123"},
+  students: {"fatma":"student123"}
+};
 
-  function login() {
-    const role = document.getElementById("role").value;
-    const email = document.getElementById("email").value.trim().toLowerCase();
-    const password = document.getElementById("password").value.trim();
+const STUDENT_KEY = "fatma_boudellaa"; // key name used in localStorage for this single student
+// Attendance stored as object: { "YYYY-MM-DD":"present"|"absent"|"late" }
+function loadAttendance() {
+  const raw = localStorage.getItem("attendance_" + STUDENT_KEY);
+  return raw ? JSON.parse(raw) : {};
+}
+function saveAttendance(obj){
+  localStorage.setItem("attendance_" + STUDENT_KEY, JSON.stringify(obj));
+}
 
-    const group = fakeDB[role];
+/* -----------------------------
+   Grades (localStorage)
+------------------------------*/
+const defaultGrades = { matematika: 97, arapski: 85, engleski: 100 };
+if(!localStorage.getItem("grades_" + STUDENT_KEY)){
+  localStorage.setItem("grades_" + STUDENT_KEY, JSON.stringify(defaultGrades));
+}
+function loadGrades(){ return JSON.parse(localStorage.getItem("grades_" + STUDENT_KEY)); }
+function saveGradesObj(g){ localStorage.setItem("grades_" + STUDENT_KEY, JSON.stringify(g)); }
 
-    if (!group[email]) {
-      alert("No account found for this email.");
-      return;
-    }
+/* -----------------------------
+   State and UI helpers
+------------------------------*/
+let currentUser = null;
+let currentRole = null;
+let viewYear, viewMonth; // displayed month
+const daysGrid = document.getElementById("daysGrid");
+const monthLabel = document.getElementById("monthLabel");
+const studentDisplay = document.getElementById("studentDisplay");
+const studentNameTitle = document.getElementById("studentNameTitle");
+studentDisplay.innerText = "fatma boudellaa";
+studentNameTitle.innerText = "fatma boudellaa";
 
-    if (group[email].password !== password) {
-      alert("Incorrect password.");
-      return;
-    }
+// init to current month
+const today = new Date();
+viewYear = today.getFullYear();
+viewMonth = today.getMonth(); // 0-index
 
-    document.getElementById("loginCard").classList.add("hidden");
+/* -----------------------------
+   Utility functions
+------------------------------*/
+function fmtDate(d){ // d = Date obj
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function monthTitle(y,m){
+  return new Date(y,m,1).toLocaleString(undefined,{month:"long", year:"numeric"});
+}
 
-    if (role === "parents") {
-      const student = group[email].student;
-      document.getElementById("studentName").innerText = "Student: " + student.name;
-      const gradeList = document.getElementById("gradeList");
-      gradeList.innerHTML = "";
+/* -----------------------------
+   Login / seed
+------------------------------*/
+function seedDefaults(){
+  localStorage.setItem("attendance_" + STUDENT_KEY, JSON.stringify({}));
+  localStorage.setItem("grades_" + STUDENT_KEY, JSON.stringify(defaultGrades));
+  alert("Seeded default grades & cleared attendance for demo.");
+}
 
-      student.grades.forEach(g => {
-        gradeList.innerHTML += `<div class='student-box'><b>${g.subject}</b>: ${g.grade}</div>`;
-      });
+function doLogin(){
+  const role = document.getElementById("role").value;
+  const rawUser = (document.getElementById("username").value || "").trim().toLowerCase();
+  const pass = (document.getElementById("password").value || "").trim();
+  if(!rawUser || !pass){ alert("Enter username and password"); return; }
 
-      document.getElementById("parentDashboard").classList.remove("hidden");
-    }
-
-    if (role === "teachers") {
-      const t = group[email];
-      document.getElementById("teacherClass").innerText = "Class: " + t.class;
-      const list = document.getElementById("studentList");
-      list.innerHTML = "";
-
-      t.students.forEach((s, index) => {
-        let grades = "";
-        for (let subj in s.grades) {
-          grades += `${subj}: <input data-student='${index}' data-subject='${subj}' value='${s.grades[subj]}' style='width:50px;' /><br>`;
-        }
-        list.innerHTML += `<div class='teacher-box'><b>${s.name}</b><br>${grades}</div>`;
-      });
-
-      // Add Save button for teacher
-      list.innerHTML += `<button onclick=\"saveGrades('${email}')\">Save Changes</button>`;(s => {
-        let grades = "";
-        for (let subj in s.grades) {
-          grades += `${subj}: ${s.grades[subj]}<br>`;
-        }
-        list.innerHTML += `<div class='teacher-box'><b>${s.name}</b><br>${grades}</div>`;
-      });
-
-      document.getElementById("teacherDashboard").classList.remove("hidden");
-    }
+  if(role === "parent"){
+    if(!ACCOUNTS.parents[rawUser]) return alert("Parent account not found.");
+    if(ACCOUNTS.parents[rawUser] !== pass) return alert("Wrong password.");
+    currentUser = rawUser; currentRole = "parent";
+  } else if(role === "teacher"){
+    if(!ACCOUNTS.teachers[rawUser]) return alert("Teacher account not found.");
+    if(ACCOUNTS.teachers[rawUser] !== pass) return alert("Wrong password.");
+    currentUser = rawUser; currentRole = "teacher";
+  } else if(role === "student"){
+    if(!ACCOUNTS.students[rawUser]) return alert("Student account not found.");
+    if(ACCOUNTS.students[rawUser] !== pass) return alert("Wrong password.");
+    currentUser = rawUser; currentRole = "student";
+  } else {
+    alert("Unknown role"); return;
   }
 
-  function saveGrades(email) {
-    const teacher = fakeDB.teachers[email];
-    const inputs = document.querySelectorAll('#teacherDashboard input');
-
-    inputs.forEach(input => {
-      const index = input.getAttribute('data-student');
-      const subject = input.getAttribute('data-subject');
-      const value = input.value;
-
-      teacher.students[index].grades[subject] = value;
-    });
-
-    alert('Grades saved!');
+  // show app
+  document.getElementById("loginPanel").classList.add("hidden");
+  document.getElementById("appArea").classList.remove("hidden");
+  if(currentRole === "teacher"){
+    document.getElementById("teacherControls").classList.remove("hidden");
+  } else {
+    document.getElementById("teacherControls").classList.add("hidden");
   }
 
-  function logout() {
-    document.getElementById("loginCard").classList.remove("hidden");
-    document.getElementById("parentDashboard").classList.add("hidden");
-    document.getElementById("teacherDashboard").classList.add("hidden");
+  renderGradesArea();
+  renderCalendar();
+  renderAttendanceSummary();
+}
+
+/* -----------------------------
+   Calendar rendering & logic
+------------------------------*/
+function renderCalendar(){
+  daysGrid.innerHTML = "";
+  monthLabel.textContent = monthTitle(viewYear, viewMonth);
+
+  const firstOfMonth = new Date(viewYear, viewMonth, 1);
+  const startingDayIndex = firstOfMonth.getDay(); // 0 = Sunday
+
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const prevDays = startingDayIndex; // number of blank cells before 1st
+
+  // fill array of Date cells for the grid (include previous & next month for spacing)
+  const totalCells = Math.ceil((prevDays + daysInMonth) / 7) * 7;
+  const startDate = new Date(viewYear, viewMonth, 1 - prevDays);
+
+  const attendance = loadAttendance();
+
+  for(let i=0;i<totalCells;i++){
+    const cellDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i);
+    const isThisMonth = (cellDate.getMonth() === viewMonth && cellDate.getFullYear() === viewYear);
+    const cell = document.createElement("div");
+    cell.className = "day" + (isThisMonth ? "" : " inactive");
+    const dateStr = fmtDate(cellDate);
+    const dayNum = cellDate.getDate();
+    const status = attendance[dateStr] || "unmarked";
+
+    // color background based on status (even for inactive days show faded)
+    if(status === "present") cell.style.background = hexFade(varColor("--present"), isThisMonth ? 1 : 0.25);
+    else if(status === "absent") cell.style.background = hexFade(varColor("--absent"), isThisMonth ? 1 : 0.25);
+    else if(status === "late") cell.style.background = hexFade(varColor("--late"), isThisMonth ? 1 : 0.25);
+    else cell.style.background = isThisMonth ? "var(--unmarked)" : "#f6f9ff";
+
+    cell.innerHTML = `<div class="date">${dayNum}</div><div class="small" style="margin-top:8px">${statusLabel(status)}</div>`;
+
+    // only allow teacher to click to change status; students/parents view read-only
+    if(isThisMonth && currentRole === "teacher"){
+      cell.style.cursor = "pointer";
+      cell.onclick = () => {
+        cycleStatusOn(dateStr);
+      };
+    }
+
+    daysGrid.appendChild(cell);
   }
+}
+
+function statusLabel(s){
+  if(s==="present") return "Present";
+  if(s==="absent") return "Absent";
+  if(s==="late") return "Late";
+  return "";
+}
+function varColor(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+// helper to produce rgba-ish faded color
+function hexFade(hex, alpha){
+  // hex like #rrggbb
+  if(!hex) return "";
+  hex = hex.replace("#","");
+  const r = parseInt(hex.substring(0,2),16);
+  const g = parseInt(hex.substring(2,4),16);
+  const b = parseInt(hex.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function cycleStatusOn(dateStr){
+  const att = loadAttendance();
+  const cur = att[dateStr] || "unmarked";
+  let next;
+  if(cur === "unmarked") next = "present";
+  else if(cur === "present") next = "absent";
+  else if(cur === "absent") next = "late";
+  else next = "unmarked";
+  if(next === "unmarked") delete att[dateStr]; else att[dateStr] = next;
+  saveAttendance(att);
+  renderCalendar();
+  renderAttendanceSummary();
+}
+
+/* -----------------------------
+   Month navigation
+------------------------------*/
+function prevMonth(){ viewMonth--; if(viewMonth<0){ viewMonth=11; viewYear--; } renderCalendar(); }
+function nextMonth(){ viewMonth++; if(viewMonth>11){ viewMonth=0; viewYear++; } renderCalendar(); }
+
+/* -----------------------------
+   Grades handling area (teacher & parent)
+------------------------------*/
+function renderGradesArea(){
+  const gradeArea = document.getElementById("gradesArea");
+  const grades = loadGrades();
+  gradeArea.innerHTML = "";
+  for(const key of Object.keys(grades)){
+    const div = document.createElement("div");
+    div.style.marginBottom = "8px";
+    if(currentRole === "teacher"){
+      div.innerHTML = `<div class="small" style="margin-bottom:6px">${key}</div>
+        <input type="number" id="g_${key}" min="1" max="100" value="${grades[key]}">`;
+    } else {
+      div.innerHTML = `<div class="grade-box"><b>${key}</b>: ${grades[key]}</div>`;
+    }
+    gradeArea.appendChild(div);
+  }
+
+  const gradeButtons = document.getElementById("gradeButtons");
+  gradeButtons.innerHTML = "";
+  if(currentRole === "teacher"){
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save Grades";
+    saveBtn.onclick = () => {
+      const newGrades = {};
+      for(const key of Object.keys(grades)){
+        const val = Number(document.getElementById("g_" + key).value);
+        if(isNaN(val) || val<1 || val>100){ alert("Grades must be 1-100"); return; }
+        newGrades[key] = val;
+      }
+      saveGradesObj(newGrades);
+      alert("Grades saved.");
+      renderGradesArea();
+    };
+    gradeButtons.appendChild(saveBtn);
+  }
+}
+
+/* -----------------------------
+   Attendance summary (counts in current month)
+------------------------------*/
+function renderAttendanceSummary(){
+  const att = loadAttendance();
+  // count for current month
+  const m = viewMonth, y = viewYear;
+  let present=0, absent=0, late=0, unmarked=0, total=0;
+  for(const [date, status] of Object.entries(att)){
+    const d = new Date(date);
+    if(d.getFullYear()===y && d.getMonth()===m){
+      total++;
+      if(status==="present") present++;
+      if(status==="absent") absent++;
+      if(status==="late") late++;
+    }
+  }
+  // unmarked days in month = daysInMonth - total
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  unmarked = daysInMonth - total;
+  document.getElementById("attendanceSummary").innerHTML =
+    `<div>Month: <b>${monthTitle(y,m)}</b></div>
+     <div style="margin-top:8px">
+       <div class="small">Present: <b style="color:var(--present)">${present}</b></div>
+       <div class="small">Absent: <b style="color:var(--absent)">${absent}</b></div>
+       <div class="small">Late: <b style="color:var(--late)">${late}</b></div>
+       <div class="small">Unmarked: <b>${unmarked}</b></div>
+     </div>`;
+}
+
+/* -----------------------------
+   Teacher utilities
+------------------------------*/
+function exportAttendance(){
+  const att = loadAttendance();
+  const dataStr = JSON.stringify(att, null, 2);
+  const blob = new Blob([dataStr], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `attendance_${STUDENT_KEY}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function clearAttendance(){
+  if(!confirm("Clear all saved attendance for student?")) return;
+  saveAttendance({});
+  renderCalendar(); renderAttendanceSummary();
+  alert("Attendance cleared.");
+}
+
+/* -----------------------------
+   Password toggle / logout
+------------------------------*/
+function togglePass(){
+  const p = document.getElementById("password");
+  p.type = p.type === "password" ? "text" : "password";
+}
+function doLogout(){
+  location.reload();
+}
+function logout(){ doLogout(); }
+
+/* -----------------------------
+   On load: set defaults & UI
+------------------------------*/
+(function init(){
+  // show login
+  document.getElementById("appArea").classList.add("hidden");
+  document.getElementById("loginPanel").classList.remove("hidden");
+  // render initial calendar state (even before login)
+  renderCalendar();
+})();
 </script>
-
 </body>
 </html>
