@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Al-Amel School — Online Grading System</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #f4f7ff; --card:#fff; --text:#14213d; --muted:#6b7280;
+    --primary:#4f46e5; --accent:#06b6d4;
+    --present:#16a34a; --absent:#ef4444; --late:#f59e0b;
+  }
+  [data-theme="dark"]{
+    --bg:#0b1220; --card:#0f1724; --text:#e6eef8; --muted:#94a3b8;
+  }
+
+  html,body{height:100%;margin:0;font-family:Poppins, Arial, sans-serif;background:var(--bg);color:var(--text)}
+  .wrap{max-width:980px;margin:24px auto;padding:18px}
+  .header{
+    display:flex;gap:12px;align-items:center;justify-content:space-between;
+    margin-bottom:18px;
+  }
+  .brand{font-weight:700;font-size:18px}
+  .controls{display:flex;gap:8px;align-items:center}
+  .select, input, button{padding:10px;border-radius:10px;border:1px solid rgba(15,23,42,0.06);background:var(--card);font-size:14px}
+  .toggle{display:flex;gap:8px;align-items:center}
+  .card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 8px 30px rgba(2,6,23,0.06)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  h2{margin:0 0 10px 0;color:var(--primary)}
+  label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
+  input[type="text"], input[type="password"], select, textarea {width:100%;box-sizing:border-box}
+  textarea{min-height:90px;border-radius:10px}
+  button.primary{background:var(--primary);color:white;border:none}
+  .muted{color:var(--muted);font-size:13px}
+  .student-list{display:flex;flex-direction:column;gap:8px}
+  .student-item{padding:10px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfdff);cursor:pointer;border:1px solid #eef4ff}
+  .student-item.active{outline:3px solid rgba(79,70,229,0.12)}
+  .subject-row{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
+  .pill{display:inline-block;padding:8px 12px;border-radius:999px;font-weight:600;cursor:pointer}
+  .pill.present{background:rgba(16,185,129,0.12);color:var(--present)} 
+  .pill.absent{background:rgba(239,68,68,0.08);color:var(--absent)}
+  .pill.late{background:rgba(245,158,11,0.08);color:var(--late)}
+  .note-box{background:#fff8d6;padding:10px;border-radius:10px;border:1px solid #f0e3a2}
+  .small{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand" id="brand">Al-Amel School Online Grading System</div>
+
+    <div class="controls">
+      <div class="toggle">
+        <label for="langSel" class="small" id="langLabel">Language</label>
+        <select id="langSel" class="select" onchange="setLang(this.value)">
+          <option value="bs">Bosanski</option>
+          <option value="ar">العربية</option>
+        </select>
+      </div>
+
+      <div style="width:12px"></div>
+
+      <div class="toggle">
+        <label class="small" for="themeToggle" id="themeLabel">Theme</label>
+        <select id="themeToggle" class="select" onchange="setTheme(this.value)">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="mainArea">
+
+    <!-- Login Card -->
+    <div id="loginCard" class="card">
+      <h2 id="loginTitle">Prijava / تسجيل الدخول</h2>
+
+      <label id="roleLabel">Uloga / الدور</label>
+      <select id="role" class="select">
+        <option value="parent">Parent / ولي الأمر</option>
+        <option value="teacher">Teacher / المعلم</option>
+      </select>
+
+      <label id="userLabel">Korisničko ime / اسم المستخدم</label>
+      <input id="username" type="text" placeholder="npr. hadz / lilas">
+
+      <label id="passLabel">Lozinka / كلمة المرور</label>
+      <input id="password" type="password" placeholder="">
+
+      <div style="height:8px"></div>
+      <button class="primary" onclick="doLogin()" id="loginBtn">Login / دخول</button>
+      <div style="height:10px"></div>
+      <div class="small" id="demoCreds">
+        Demo: teacher = <b>lilas</b> / <b>teacher123</b> · parents: <b>hadz</b>/<b>fatma123</b>, <b>emir</b>/<b>emir123</b>
+      </div>
+    </div>
+
+    <!-- Dashboards -->
+    <div id="dashboards" class="grid" style="display:none; margin-top:18px">
+      <!-- Left column: Teacher controls or Parent info -->
+      <div class="card" id="leftCol">
+        <!-- Teacher Panel -->
+        <div id="teacherPanel" style="display:none">
+          <h2 id="tTitle">Teacher Panel</h2>
+          <label id="selectStudentLabel">Select Student</label>
+          <div class="student-list" id="studentList"></div>
+
+          <div style="height:10px"></div>
+          <h3 id="subjectsTitle">Subjects / Predmeti</h3>
+          <div id="subjectsEditor"></div>
+
+          <label id="attendanceLabel">Attendance / Prisustvo</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div class="pill present" onclick="setStatus('present')">Present / Prisutan</div>
+            <div class="pill absent" onclick="setStatus('absent')">Absent / Odsutan</div>
+            <div class="pill late" onclick="setStatus('late')">Late / Kasni</div>
+          </div>
+
+          <label id="noteLabel">Teacher note / Bilješka</label>
+          <textarea id="teacherNote" placeholder=""></textarea>
+
+          <div style="height:8px"></div>
+          <button class="primary" onclick="teacherSave()">Save (Sačuvaj) </button>
+          <div style="height:8px"></div>
+          <button onclick="logout()" style="background:#ef4444;color:white;border:none;padding:10px;border-radius:10px">Logout / Odjava</button>
+        </div>
+
+        <!-- Parent Panel -->
+        <div id="parentPanel" style="display:none">
+          <h2 id="pTitle">Parent Panel</h2>
+          <div class="box" style="padding:12px" id="pStudentName">Student: —</div>
+
+          <h3 id="pGradesTitle">Grades / Ocjene</h3>
+          <div id="pGrades"></div>
+
+          <h3 id="pAttendanceTitle">Attendance / Prisustvo</h3>
+          <div id="pAttendance" class="box">-</div>
+
+          <h3 id="pNoteTitle">Teacher note / Bilješka</h3>
+          <div id="pNote" class="note-box">No notes / Nema bilješki</div>
+
+          <div style="height:10px"></div>
+          <button onclick="logout()" style="background:#ef4444;color:white;border:none;padding:10px;border-radius:10px">Logout / Odjava</button>
+        </div>
+      </div>
+
+      <!-- Right column: Info / Help -->
+      <div class="card">
+        <h2 id="infoTitle">Info</h2>
+        <div id="infoBox">
+          <p class="small" id="infoText">Use teacher account to edit grades; parents view their child's data.</p>
+        </div>
+
+        <div style="height:12px"></div>
+        <div id="historyBox" style="display:none">
+          <h3 id="historyTitle">Saved Data</h3>
+          <pre id="rawData" style="background:#f8faff;padding:10px;border-radius:8px;max-height:240px;overflow:auto"></pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* -------------------------
+  Configuration & Defaults
+---------------------------*/
+const SUBJECTS = [
+  "Matematika","Bosanski","Engleski","Arapski","Hemija","Fizika",
+  "Biologija","Geografija","Historija","Informatika","Islamski odgoj","Tjelesni"
+];
+
+// Accounts: parents -> mapped student usernames
+const ACCOUNTS = {
+  teacher: { user: "lilas", pass: "teacher123" },
+  parents: {
+    hadz: { pass: "fatma123", student: "fatma" },
+    emir: { pass: "emir123", student: "emir" },
+    amina: { pass: "amina123", student: "amina" },
+    selma: { pass: "selma123", student: "selma" }
+  }
+};
+
+// Initial student data (will be stored in localStorage per student)
+const DEFAULT_STUDENTS = {
+  fatma: { name: "Fatma Boudella", grades: {}, attendance: "present", note: "Molim vas donesite domaći zadatak sutra." },
+  emir:  { name: "Emir Boudellaa", grades: {}, attendance: "present", note: "" },
+  amina: { name: "Amina Said", grades: {}, attendance: "present", note: "" },
+  selma: { name: "Selma Hasan", grades: {}, attendance: "present", note: "" }
+};
+
+SUBJECTS.forEach(s => {
+  for(let k in DEFAULT_STUDENTS){
+    if(DEFAULT_STUDENTS[k].grades[s]===undefined) DEFAULT_STUDENTS[k].grades[s] = "";
+  }
+});
+
+/* -------------------------
+  Helpers (localStorage)
+---------------------------*/
+function studentKey(name){ return "student_" + name; }
+function loadStudent(name){
+  const raw = localStorage.getItem(studentKey(name));
+  if(!raw) {
+    const s = DEFAULT_STUDENTS[name];
+    localStorage.setItem(studentKey(name), JSON.stringify(s));
+    return s;
+  }
+  return JSON.parse(raw);
+}
+function saveStudent(name,obj){
+  localStorage.setItem(studentKey(name), JSON.stringify(obj));
+}
+
+/* -------------------------
+   UI i18n (Bosnian + Arabic)
+---------------------------*/
+let LANG = localStorage.getItem("alm_lang") || "bs";
+let THEME = localStorage.getItem("alm_theme") || "light";
+
+const TEXTS = {
+  bs: {
+    brand: "Al-Amel School Online Grading System",
+    loginTitle: "Prijava",
+    role: "Uloga",
+    parent: "Roditelj",
+    teacher: "Nastavnik",
+    user: "Korisničko ime",
+    pass: "Lozinka",
+    loginBtn: "Prijava",
+    demo: "Demo: teacher = lilas/teacher123 · roditelji: hadz/fatma123, emir/emir123",
+    tTitle: "Panel nastavnika",
+    selectStudent: "Odaberite učenika",
+    subjectsTitle: "Predmeti",
+    attendance: "Prisustvo",
+    note: "Bilješka nastavnika",
+    save: "Sačuvaj",
+    logout: "Odjava",
+    pTitle: "Panel roditelja",
+    info: "Koristi nalog nastavnika za uređivanje ocjena; roditelji vide podatke svog djeteta.",
+    noNotes: "Nema bilješki."
+  },
+  ar: {
+    brand: "Al-Amel School Online Grading System | نظام الدرجات",
+    loginTitle: "تسجيل الدخول",
+    role: "الدور",
+    parent: "ولي الأمر",
+    teacher: "المعلم",
+    user: "اسم المستخدم",
+    pass: "كلمة المرور",
+    loginBtn: "دخول",
+    demo: "تجريبي: المعلم lilas/teacher123 · أولياء: hadz/fatma123, emir/emir123",
+    tTitle: "لوحة المعلم",
+    selectStudent: "اختر الطالب",
+    subjectsTitle: "المواد",
+    attendance: "الحضور",
+    note: "ملاحظة المعلم",
+    save: "حفظ",
+    logout: "تسجيل الخروج",
+    pTitle: "لوحة ولي الأمر",
+    info: "استخدم حساب المعلم لتعديل الدرجات؛ يرى الأهل بيانات طفلهم.",
+    noNotes: "لا توجد ملاحظات."
+  }
+};
+
+function translateUI(){
+  const t = TEXTS[LANG];
+  document.getElementById("brand").innerText = t.brand;
+  document.getElementById("loginTitle").innerText = t.loginTitle;
+  document.getElementById("roleLabel").innerText = t.role;
+  // role select options
+  const roleSel = document.getElementById("role");
+  roleSel.options[0].text = t.parent + " / " + TEXTS.other?.parent ?? t.parent;
+  roleSel.options[1].text = t.teacher + " / " + TEXTS.other?.teacher ?? t.teacher;
+  document.getElementById("userLabel").innerText = t.user;
+  document.getElementById("passLabel").innerText = t.pass;
+  document.getElementById("loginBtn").innerText = t.loginBtn;
+  document.getElementById("demoCreds").innerText = t.demo;
+  document.getElementById("tTitle").innerText = t.tTitle;
+  document.getElementById("selectStudentLabel").innerText = t.selectStudent;
+  document.getElementById("subjectsTitle").innerText = t.subjectsTitle;
+  document.getElementById("attendanceLabel").innerText = t.attendance;
+  document.getElementById("noteLabel").innerText = t.note;
+  document.getElementById("pTitle").innerText = t.pTitle;
+  document.getElementById("infoText").innerText = t.info;
+  document.getElementById("pGradesTitle").innerText = (LANG==="ar" ? "الدرجات" : "Grades / Ocjene");
+  document.getElementById("pAttendanceTitle").innerText = (LANG==="ar" ? "الحضور" : "Attendance / Prisustvo");
+  document.getElementById("pNoteTitle").innerText = (LANG==="ar" ? "ملاحظة المعلم" : "Teacher note / Bilješka");
+  // direction
+  document.documentElement.dir = (LANG === "ar") ? "rtl" : "ltr";
+}
+
+/* -------------------------
+   Theme
+---------------------------*/
+function setTheme(mode){
+  THEME = mode;
+  localStorage.setItem("alm_theme", THEME);
+  if(THEME === "dark") document.documentElement.setAttribute("data-theme","dark");
+  else document.documentElement.removeAttribute("data-theme");
+}
+
+/* -------------------------
+   Language setter
+---------------------------*/
+function setLang(l){
+  LANG = l;
+  localStorage.setItem("alm_lang", LANG);
+  translateUI();
+}
+
+/* -------------------------
+   App logic
+---------------------------*/
+let currentUser = null;
+let currentRole = null;
+let currentStudent = null;
+
+function init(){
+  // apply theme & lang
+  setTheme(THEME);
+  document.getElementById("themeToggle").value = THEME;
+  document.getElementById("langSel").value = LANG;
+  translateUI();
+
+  // ensure default students exist
+  for(let s in DEFAULT_STUDENTS){
+    if(!localStorage.getItem(studentKey(s))){
+      saveStudent(s, DEFAULT_STUDENTS[s]);
+    }
+  }
+}
+init();
+
+/* LOGIN */
+function doLogin(){
+  const role = document.getElementById("role").value;
+  const user = document.getElementById("username").value.trim().toLowerCase();
+  const pass = document.getElementById("password").value.trim();
+
+  if(role === "teacher"){
+    if(user === ACCOUNTS.teacher.user && pass === ACCOUNTS.teacher.pass){
+      currentUser = user; currentRole = "teacher";
+      openTeacher();
+      return;
+    } else { alert((LANG==="ar") ? "بيانات غير صحيحة!" : "Pogrešni podaci!"); return; }
+  }
+
+  if(role === "parent"){
+    if(ACCOUNTS.parents[user] && ACCOUNTS.parents[user].pass === pass){
+      currentUser = user; currentRole = "parent";
+      openParent(ACCOUNTS.parents[user].student);
+      return;
+    } else { alert((LANG==="ar") ? "بيانات غير صحيحة!" : "Pogrešni podaci!"); return; }
+  }
+}
+
+/* OPEN TEACHER */
+function openTeacher(){
+  document.getElementById("loginCard").style.display = "none";
+  document.getElementById("dashboards").style.display = "grid";
+  document.getElementById("teacherPanel").style.display = "block";
+  document.getElementById("parentPanel").style.display = "none";
+  buildStudentList();
+  // default select first
+  const first = Object.keys(DEFAULT_STUDENTS)[0];
+  selectStudent(first);
+}
+
+/* build student list */
+function buildStudentList(){
+  const list = document.getElementById("studentList");
+  list.innerHTML = "";
+  for(let key in DEFAULT_STUDENTS){
+    const el = document.createElement("div");
+    el.className = "student-item";
+    el.id = "student_item_" + key;
+    el.innerText = DEFAULT_STUDENTS[key].name + " (" + key + ")";
+    el.onclick = ()=> selectStudent(key);
+    list.appendChild(el);
+  }
+}
+
+/* select student for editing */
+function selectStudent(name){
+  currentStudent = name;
+  // highlight
+  document.querySelectorAll(".student-item").forEach(x=> x.classList.remove("active"));
+  const el = document.getElementById("student_item_" + name);
+  if(el) el.classList.add("active");
+
+  // load data
+  const s = loadStudent(name);
+  // subjects editor
+  const ed = document.getElementById("subjectsEditor");
+  ed.innerHTML = "";
+  SUBJECTS.forEach(sub=>{
+    const id = "g_" + safeId(sub);
+    const val = s.grades[sub] || "";
+    const row = document.createElement("div");
+    row.className = "subject-row";
+    row.innerHTML = `<div style="flex:1">${sub}</div>
+                     <div style="width:120px"><input id="${id}" type="number" min="0" max="100" placeholder="1-100" value="${val}"></div>`;
+    ed.appendChild(row);
+  });
+  // attendance and note
+  const attSel = document.getElementById("attendance");
+  attSel.value = mapAttendanceToLang(s.attendance);
+  document.getElementById("teacherNote").value = s.note || "";
+}
+
+/* set attendance via pill */
+function setStatus(st){
+  // st: 'present'|'absent'|'late'
+  const mapping = { present: (LANG==="ar") ? "حاضر" : "present", absent: (LANG==="ar") ? "غائب" : "absent", late: (LANG==="ar") ? "متأخر" : "late" };
+  document.getElementById("attendance").value = mapping[st];
+}
+
+/* teacher save */
+function teacherSave(){
+  if(!currentStudent){ alert((LANG==="ar") ? "اختر طالبًا" : "Odaberite učenika"); return; }
+  const s = loadStudent(currentStudent);
+  SUBJECTS.forEach(sub=>{
+    const id = "g_" + safeId(sub);
+    const elem = document.getElementById(id);
+    if(elem){
+      const val = elem.value.trim();
+      s.grades[sub] = val === "" ? "" : Number(val);
+    }
+  });
+  // attendance
+  s.attendance = document.getElementById("attendance").value || (LANG==="ar" ? "حاضر" : "present");
+  // note
+  s.note = document.getElementById("teacherNote").value.trim();
+  saveStudent(currentStudent, s);
+  alert((LANG==="ar") ? "تم الحفظ بنجاح!" : "Sačuvano!");
+  // update raw view
+  updateRawData();
+}
+
+/* OPEN PARENT */
+function openParent(studentKey){
+  document.getElementById("loginCard").style.display = "none";
+  document.getElementById("dashboards").style.display = "grid";
+  document.getElementById("teacherPanel").style.display = "none";
+  document.getElementById("parentPanel").style.display = "block";
+  renderParent(studentKey);
+}
+
+/* render parent view (only their student) */
+function renderParent(key){
+  const s = loadStudent(key);
+  document.getElementById("pStudentName").innerText = s.name + " (" + key + ")";
+  const gradesBox = document.getElementById("pGrades");
+  gradesBox.innerHTML = "";
+  SUBJECTS.forEach(sub=>{
+    const g = (s.grades[sub] === "" || s.grades[sub]===null) ? ((LANG==="ar") ? "غير مُحددة" : "Nije uneseno") : s.grades[sub];
+    const row = document.createElement("div");
+    row.className = "subject-row";
+    row.innerHTML = `<div style="flex:1">${sub}</div><div style="width:80px;text-align:right;font-weight:700">${g}</div>`;
+    gradesBox.appendChild(row);
+  });
+  // attendance display (translate)
+  const a = s.attendance;
+  document.getElementById("pAttendance").innerText = a;
+  // note
+  document.getElementById("pNote").innerText = s.note || (LANG==="ar" ? TEXTS.ar.noNotes : TEXTS.bs.noNotes);
+}
+
+/* logout */
+function logout(){
+  // reload to reset UI
+  location.reload();
+}
+
+/* raw data for debugging (optional) */
+function updateRawData(){
+  const box = document.getElementById("rawData");
+  if(!box) return;
+  const all = {};
+  for(let k in DEFAULT_STUDENTS) all[k] = loadStudent(k);
+  box.innerText = JSON.stringify(all, null, 2);
+  document.getElementById("historyBox").style.display = "block";
+}
+
+/* helpers */
+function safeId(text){ return text.replace(/[^a-zA-Z0-9]/g,"_"); }
+function mapAttendanceToLang(att){
+  // att might be stored as 'present' or Bosnian/Arabic forms; normalize
+  if(!att) return (LANG==="ar") ? "حاضر" : "present";
+  const lower = String(att).toLowerCase();
+  if(lower.includes("ح")) return (LANG==="ar") ? "حاضر" : "present";
+  if(lower.includes("ods") || lower.includes("abs")) return (LANG==="ar") ? "غائب" : "absent";
+  if(lower.includes("kas") || lower.includes("lat") || lower.includes("مت")) return (LANG==="ar") ? "متأخر" : "late";
+  // fallback
+  return (LANG==="ar") ? (att==="present" ? "حاضر" : att) : att;
+}
+
+/* safe TEXTS usage wrapper */
+const TEXTS_COMBINED = { bs: TEXTS.bs, ar: TEXTS.ar };
+
+/* Expose some controls to console (optional) */
+window._alm = { loadStudent, saveStudent, updateRawData };
+
+/* show raw initially hidden; if you want to debug call updateRawData() from console */
+
+</script>
+</body>
+</html>
